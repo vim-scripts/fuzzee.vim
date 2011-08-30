@@ -1,5 +1,8 @@
 fuzzee	fuzzee.txt	/*fuzzee*
 fuzzee-:F	fuzzee.txt	/*fuzzee-:F*
+fuzzee-:FS	fuzzee.txt	/*fuzzee-:FS*
+fuzzee-:FT	fuzzee.txt	/*fuzzee-:FT*
+fuzzee-:FV	fuzzee.txt	/*fuzzee-:FV*
 fuzzee-about	fuzzee.txt	/*fuzzee-about*
 fuzzee-author	fuzzee.txt	/*fuzzee-author*
 fuzzee-tips	fuzzee.txt	/*fuzzee-tips*

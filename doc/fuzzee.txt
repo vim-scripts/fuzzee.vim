@@ -18,6 +18,19 @@ some arguments have special connotation.
                                              *fuzzee-:F* 
 :F                              Open up |:Explore| on the current buffer.
 
+                                             *fuzzee-:FS*
+:FS                             Open up in a split. With no arguments, this
+                                calls |:Sexplore|.
+                                            
+                                             *fuzzee-:FV*
+:FV                             Open up in a vertical split. With no
+                                arguments, this calls |:Vexplore|.
+
+                                             *fuzzee-:FT*
+:FT                             Open up in a new tab. With no arguments, this
+                                calls |:Texplore|.
+
+
 :F .                            Open up |:Explore| on the current Vim working
                                 directory.
 
@@ -32,9 +45,9 @@ some arguments have special connotation.
 
 :F [directory]                  Fuzzy-complete any directory with '/' as it's
                                 first character and execute 'edit' on them,
-                                opening up the the explorer if the last
-                                character is '/', otherwise opening up the
-                                first match.
+                                opening up the the explorer. If the last
+                                character is '/', open the first match inside
+                                that directory.
 
 TIPS                                         *fuzzee-tips*
 

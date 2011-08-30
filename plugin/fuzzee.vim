@@ -1,6 +1,6 @@
 " fuzzee.vim - Fuzzy expansions for :e and :E
 " Author: Matt Sacks <matt.s.sacks@gmail.com>
-" Version: 0.1
+" Version: 0.2
 
 if exists('g:loaded_fuzzee') || v:version < 700 || &cp
   finish
@@ -44,7 +44,7 @@ function! s:fuzzglob(arg,L,P)
   endif
 
   if a:arg =~ '^\.\/'
-    let f = substitute(a:arg, '^\.\/', '', '')
+    let s:head = "."
   endif
 
   if a:arg =~ '^\.\.\/'
@@ -66,9 +66,18 @@ function! s:fuzzglob(arg,L,P)
   if f == tail && &buftype != 'nofile'
     let ls = globpath("%:h", f)
   elseif &buftype == 'nofile'
-    let ls = globpath('%', f)
+    if s:head !~ '^$'
+      let ls = globpath(getcwd(), f)
+    else
+      let ls = globpath('%', f)
+    endif
   else
-    let ls  = globpath('%:h', f)
+    if s:head !~ '^$'
+      let f = substitute(f, '^\.\*', '\.', '')
+      let ls = globpath(getcwd(), f)
+    else
+      let ls  = globpath('%:h', f)
+    endif
     let ls2 = map(copy(split(ls, "\n")), 'substitute(v:val, "^\.\/", "", "")')
     let ls  = join(ls2, "\n")
   endif
@@ -84,7 +93,7 @@ function! s:fuzzglob(arg,L,P)
   else
     if &buftype == 'nofile' && f == tail
       let s:head = fnamemodify(split(ls, "\n")[0], ':h')
-    elseif (f == tail || f =~ '\/') && &buftype != 'nofile'
+    elseif f == tail && &buftype != 'nofile' && s:head =~ '^$'
       let s:head = expand("%:h")
     endif
     if f == tail
@@ -95,30 +104,44 @@ function! s:fuzzglob(arg,L,P)
   endif
 endfunction
 
-function! s:F(...)
+function! s:F(cmd, ...)
+  let cmds = {'E': 'edit', 'S': 'split', 'V': 'vsplit', 'T': 'tabedit'}
+  let cmd  = cmds[a:cmd]
+  if a:cmd == 'E'
+    let goal = a:cmd.'xplore '
+  else
+    let goal = a:cmd.'explore '
+  endif
+
   if a:0 == 0
     if &buftype == 'nofile'
-      execute "Explore %"
+      return 'silent! '.goal.'%'
     else
-      execute "Explore %:h"
+      return 'silent! '.goal.'%:h'
     endif
-    return
   endif
 
   if a:1 =~ '^\.$'
-    return "silent! edit ."
+    return 'silent! '.goal.getcwd()
   endif
 
   let f = s:fuzzglob(a:1, '', '')
+  if s:head =~ '^\.' && f[0][0] == '/'
+    let s:head = ''
+  endif
   if len(f) == 0
     return
   elseif s:head !~ '^$'
-    let f[0] = substitute(f[0], '\s', '\\ ' ,'')
-    execute "silent! edit" s:head.'/'.f[0]
+    let f[0] = substitute(f[0], '\s', '\\ ' ,'g')
+    execute "silent! ".cmd s:head.'/'.f[0]
   else
-    let f[0] = substitute(f[0], '\s', '\\ ' ,'')
-    execute "silent! edit" f[0]
+    let f[0] = substitute(f[0], '\s', '\\ ' ,'g')
+    execute "silent! ".cmd f[0]
   endif
+  execute "silent! lcd" getcwd()
 endfunction
 
-command! -nargs=? -complete=customlist,s:fuzzglob F :execute s:F(<f-args>)
+command! -nargs=? -complete=customlist,s:fuzzglob F  :execute s:F('E', <f-args>)
+command! -nargs=? -complete=customlist,s:fuzzglob FS :execute s:F('S', <f-args>)
+command! -nargs=? -complete=customlist,s:fuzzglob FV :execute s:F('V', <f-args>)
+command! -nargs=? -complete=customlist,s:fuzzglob FT :execute s:F('T', <f-args>)
