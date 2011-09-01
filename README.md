@@ -4,13 +4,13 @@ fuzzee.vim
 Fuzzee.vim will tab-complete paths relative to the current working directory in
 Vim and also the current buffer for use with `:e[dit]` and `:E[xplore]`. It also
 ignores files, directories, and filetypes listed in the user-defined
-`wildignore` setting.
+`wildignore` setting and has support for multi-directory globbing.
 
 Install
 -------
 
 Install with [vim-pathogen](https://github.com/tpope/vim-pathogen) in your
-`~/.vimbundles/` folder. 
+configured bundles folder. 
 
 Or you can extract `fuzzee.vim` from `plugins/` and place it in your
 `~/.vim/plugins/` directory with the others.
@@ -38,11 +38,19 @@ explorer in vim.
 `:F .` will open up the explorer on whatever your current Vim working directory
 is. `:F ` with no arguments will open up the explorer on the current buffer.
 
+Use `*` to glob multiple directories. For example, `:F ~/dro*foo` will find
+`~/Dropbox/dev/foo` or any combination of `*d*r*o*f*o*o*` in your home
+directory. `*` is relative globbing - that is, it globs from the current buffer.
+Use `*/` to search for anything in your current working directory, as `*/aplcont`
+will find `app/controllers/application_controller`.
+
 Commands also available for opening files or the explorer:
 
 * `:FS` - opens up in a split
 * `:FV` - opens in a vertical split
 * `:FT` - opens in a new tab
+* `:FL` - change local working directory
+* `:FC` - change working directory
 
 Tips
 ----
@@ -59,6 +67,11 @@ This let's you type `:F foo,pj` to expand the first file that matches `*f*o*o*`
 within that directory. Adding a comma as `:f ,,pj` will show the autocomplete
 menu for that directory. See `:h wcm` and `:h mapmode-c` for more details.
 
+Vim has a global working directory (`:cd`) and a local to window (that includes
+splits) working directory (`:lcd`). Use these for making project paths relative
+and not absolute (`app/dir` instead of `/Users/foo/dev/app/dir`). Play around
+with `:pwd` as well to see how this works.
+
 Hitting `<C-w>` with any expanded path deletes back to the last Word - use to
 move up directories quickly.
 
@@ -68,16 +81,13 @@ prepended `./`.
 Some recommended vimrc settings:
 
     nnoremap <Leader>f :F<Space>
-    set wildmode=list,full
+    nnoremap <Leader>t :F */
+    set wildmode=list:full
     set wildmenu 
     set wildignore+=
         \*.png,*.jpg,*.pdf, 
         \CVS,SVN, 
         \" more files to ignore here
-
-This plugin leverages `expand("%:h")` in Vim which gets weird sometimes when in
-a directory. Mostly it happens when navigating to directories when using `:edit`
-with a trailing `/` at the end of the argument. So try not to do that.
 
 Links
 -----

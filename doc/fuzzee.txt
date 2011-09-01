@@ -3,7 +3,7 @@
 Author: Matt Sacks <matt.s.sacks@gmail.com>  *fuzzee-author*
 License: Same terms as Vim itself (see |license|)
 
-This plugin is only available for Vim version 7.2 and higher with 'compatible'
+This plugin is only available for Vim version 7.0 and higher with 'compatible'
 set.
 
 INTRODUCTION                                 *fuzzee*
@@ -30,12 +30,27 @@ some arguments have special connotation.
 :FT                             Open up in a new tab. With no arguments, this
                                 calls |:Texplore|.
 
+                                             *fuzzee-:FL*
+:FL [directory]                 Changes local directory |:lcd| to a given
+                                argument.
 
+                                             *fuzzee-:FC*
+:FC [directory]                 Changes working directory |:cd| to a given
+                                argument.
+
+                                             *fuzzee-arguments*
 :F .                            Open up |:Explore| on the current Vim working
                                 directory.
 
 :F ` 
 :F ~                            Complete to the user's '$HOME' directory.
+
+                                             *fuzzee-globbing*
+:F *                            Look for anything after * in any directory
+                                under the current buffer.
+
+:F */                           Look for anything after */ in any directory
+                                under the current working directory.
 
 :F [args]                       Fuzzy-complete any args relative to the current
                                 buffer and execute 'edit'.
@@ -56,12 +71,17 @@ typing out paths to filesnames quite often, mappings can shortcut them for
 you. Remember - these paths are local to the current working directory or
 buffer. Use |:lcd| to configure this. 
 
+Globbing is only as fast as the information that you give it. With each
+character before and after *, Vim will find your file quicker. Be careful with
+globbing as it increases the chances you won't find the correct file.
+
 See the README for more information.
 
 ABOUT                                        *fuzzee-about*
 
 This plugin is used simply to leverage 'edit' with fuzzy-completion both local
-to the current buffer and any specified path. It also uses any 'wildignore' settings.
+to the current buffer and any specified path. It also uses any 'wildignore'
+settings.
 
 For the most up to date development version or to report any inevitable bugs,
 please visit:
