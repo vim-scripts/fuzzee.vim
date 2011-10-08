@@ -1,12 +1,13 @@
 " fuzzee.vim - Fuzzy expansions for :e and :E
 " Author: Matt Sacks <matt.s.sacks@gmail.com>
-" Version: 0.4
+" Version: 0.5
 
-if exists('g:loaded_fuzzee') || v:version < 700 || &cp
+if exists('g:loaded_fuzzee') || v:version < 700
   finish
 endif
 let g:loaded_fuzzee = 1
 
+" utility {{{1
 function! s:gsub(str,pat,rep) abort
   return substitute(a:str,'\v\C'.a:pat,a:rep,'g')
 endfunction
@@ -27,20 +28,27 @@ function! s:filterglob(ls, cwd)
     let ls = substitute(a:ls, a:cwd.'/', '', 'g')
     return substitute(ls, '\.\/', '', 'g')
 endfunction
+" END utility }}}1
 
+" fuzzyglob {{{1
 function! s:fuzzglob(arg,L,P)
   let s:head = ''
+  let dir    = fnameescape(expand('%'))
+  let updir  = fnameescape(expand('%:h'))
+  let cwd    = fnameescape(getcwd())
+
+  " before fuzzy-expansion {{{2
   if a:arg =~ '^\s*$'
     if &buftype == 'nofile'
-      if expand('%') =~ '^$' " new buffer is blank
+      if dir =~ '^$' " new buffer is blank
         return s:sortlist(globpath('/', '*'), 1)
       else
-        return s:sortlist(globpath('%'.'/', '*'), 1)
+        return s:sortlist(globpath(dir, '*'), 1)
       endif
-    elseif expand('%') =~ '^$'
-      return s:sortlist(globpath(getcwd(), '*'), 1)
-    else 
-      return s:sortlist(globpath('%:h', '*'), 1)
+    elseif dir =~ '^$'
+      return s:sortlist(globpath(cwd, '*'), 1)
+    else
+      return s:sortlist(globpath(updir, '*'), 1)
     endif
   endif
 
@@ -54,13 +62,9 @@ function! s:fuzzglob(arg,L,P)
     let s:head = '.'
   endif
 
-  let dir   = escape(expand('%'), ' ')
-  let updir = escape(expand('%:h'), ' ')
-  let cwd   = escape(getcwd(), ' ')
-
   if a:arg =~ '^\.\.\/'
-    let dots = matchlist(a:arg, '^\(\.\.\/\)\+')[0]
-    let path = matchlist(a:arg, '^\%(\.\.\/\)\+\(.*\)$')[1]
+    let dots = matchlist(a:arg, '\(\.\.\/\)\+')[0]
+    let path = matchlist(a:arg, '\%(\.\.\/\)\+\(.*\)$')[1]
     if &buftype == 'nofile'
       let f = fnamemodify(dir.'/'.dots, ':p')
     else
@@ -68,28 +72,32 @@ function! s:fuzzglob(arg,L,P)
     endif
     let f = f.path
   endif
-
-  let f    = s:gsub(s:gsub(f,'[^/.]','[&]*'),'%(/|^)\.@!|\.','&*')
-  let f    = substitute(f, '\*\[[~`]\]\*', '$HOME', '')
-  let f    = substitute(f, '\*[\*\]\*', '\*\*\/\*', 'g') 
-  let tail = fnamemodify(f, ':t')
+  " END fuzzy-expansion }}}2
   
-  " if completing a directory
+  let f    = s:gsub(s:gsub(f,'[^/.]','[&]*'),'%(/|^)\.@!|\.','&*')
+  if a:arg =~ '^\*\/'
+    let f  = substitute(f, '^\*[\*\]\*', '**', '')
+  endif
+  let f    = s:gsub(f, '\*[\*\]\*', '**/*')
+  let f    = substitute(f, '\*\[[~`]\]', '$HOME', '')
+  let tail = fnamemodify(f, ':t')
+
+  " its globbering time {{{2
   if f == tail && &buftype != 'nofile'
     let ls = globpath(updir, f)
   elseif &buftype == 'nofile'
     if (s:head !~ '^$')
       let ls = globpath(cwd, ' ')
+    elseif f =~ '^\/' && f !~ '\/*$'
+      let ls = globpath('/', tail)
     elseif f =~# '^$HOME'
-      let ls = substitute(globpath(f, ''), '\/$', '', 'g')
+      let ls = s:gsub(globpath(f, ''), '/$', '')
     elseif dir =~ '^\/$'
       let ls = globpath('/', f)
     elseif a:arg =~ '^*\/'
-      let ls = globpath(cwd, f)."\n"
-             \.globpath(cwd, fnamemodify(f, ':t'))
+      let ls = globpath(cwd, f)
       let ls = s:filterglob(ls, cwd)
     elseif a:arg =~  '^*'
-      let s:head = dir
       let ls = globpath(dir, f)
       let ls = s:filterglob(ls, cwd)
     else
@@ -97,22 +105,27 @@ function! s:fuzzglob(arg,L,P)
     endif
   else
     if s:head !~ '^$'
-      let f = substitute(f, '^\.\*', '\.', '')
+      let f  = substitute(f, '^\.\*', '\.', '')
       let ls = globpath(cwd, f)
     elseif a:arg =~ '^\*\/'
-      let ls = globpath(cwd, f)."\n"
-             \.globpath(cwd, fnamemodify(f, ':t'))
+      let ls = globpath(cwd, f)
     elseif a:arg =~  '^\*'
       let s:head = updir
       let ls = globpath(updir, f)
     else
-      let ls  = globpath(updir, f)
+      let ls = globpath(updir, f)
     endif
     let ls = s:filterglob(ls, cwd)
   endif
+  " END if completing a directory }}}2
 
+  " return the globbed files {{{2
   if len(ls) == 0 && tail !~ '\.'
-    if len(glob(f)) == 0
+    " defer globbing if not necessary
+    if s:head !~ '^$'
+      echomsg 'not found'
+      return ''
+    elseif len(glob(f)) == 0
       echomsg 'not found'
       return ''
     endif
@@ -125,22 +138,23 @@ function! s:fuzzglob(arg,L,P)
     elseif f == tail && &buftype != 'nofile' && s:head =~ '^$'
       let s:head = updir
     endif
-    if f == tail 
+    if f == tail
       return s:sortlist(ls, 1)
     else
       return s:sortlist(ls, 0)
     endif
   endif
 endfunction
+" END fuzzyglob }}}1
 
+" the F command {{{1
 function! s:F(cmd, ...)
-  let cmds = {'E': 'edit', 'S': 'split', 'V': 'vsplit', 'T': 'tabedit',
-             \'L': 'lcd', 'C': 'cd'}
-  let chdir  = ['L', 'C']
-  let cmd  = cmds[a:cmd]
-  let dir   = substitute(escape(expand('%'), ' '), '\(.\)/$', '\1', '')
-  let updir = substitute(escape(expand('%:h'), ' '), '\(.\)/$', '\1', '')
-  let cwd   = substitute(escape(getcwd(), ' '), '\(.\)/$', '\1', '')
+  let cmds  = {'E': 'edit', 'S': 'split', 'V': 'vsplit', 'T': 'tabedit',
+              \'L': 'lcd', 'C': 'cd'}
+  let cmd   = cmds[a:cmd]
+  let dir   = substitute(fnameescape(expand('%')), '\(.\)/$', '\1', '')
+  let updir = substitute(fnameescape(expand('%:h')), '\(.\)/$', '\1', '')
+  let cwd   = substitute(fnameescape(getcwd()), '\(.\)/$', '\1', '')
 
   if a:0 == 0
     if expand("%") =~# '^$'
@@ -165,12 +179,52 @@ function! s:F(cmd, ...)
   if len(f) == 0
     return
   elseif s:head !~ '^$'
-    execute 'silent! '.cmd escape(s:head.'/'.f[0], ' ')
+    execute 'silent! '.cmd fnameescape(s:head.'/'.f[0])
   else
-    execute 'silent! '.cmd escape(f[0], ' ')
+    execute 'silent! '.cmd fnameescape(f[0])
   endif
-  execute 'silent! lcd' substitute(escape(getcwd(), ' '), '\(.\)/$', '\1', '')
+  execute 'silent! lcd' fnameescape(getcwd())
 endfunction
+" END the F command }}}1
+
+" fuzzee-buffer {{{1
+function! s:buffglob(arg,L,P)
+  let buffers = []
+  for b in range(1, bufnr('$'))
+    if bufexists(b) && buflisted(b) == 1
+      call add(buffers, bufname(b))
+    endif
+  endfor
+  if a:arg =~ '^$'
+    return buffers
+  endif
+
+  let b = s:gsub(s:gsub(a:arg,'[^/.\>]','[&].*'),'%(/|^)\.@!|\.','&')
+  let b = s:gsub(b, '\*\[ \]\*', '*')
+
+  return filter(buffers, 'v:val =~ b')
+endfunction
+
+function! s:FB(...)
+  if a:0 == 0
+    execute 'silent! b' bufname('#')
+    return
+  endif
+
+  let f = s:buffglob(a:1, '', '')
+  let b = ''
+
+  if &switchbuf !~ '^$'
+    for i in range(1, tabpagenr('$'))
+      if index(tabpagebuflist(i), bufnr(f[0])) != -1
+        let b = 's'
+        break
+      endif
+    endfor
+  endif
+  execute 'silent '.b.'b' f[0]
+endfunction
+" END fuzzee-buffer }}}1
 
 command! -nargs=? -complete=customlist,s:fuzzglob F  :execute s:F('E', <f-args>)
 command! -nargs=? -complete=customlist,s:fuzzglob FS :execute s:F('S', <f-args>)
@@ -178,3 +232,4 @@ command! -nargs=? -complete=customlist,s:fuzzglob FV :execute s:F('V', <f-args>)
 command! -nargs=? -complete=customlist,s:fuzzglob FT :execute s:F('T', <f-args>)
 command! -nargs=? -complete=customlist,s:fuzzglob FL :execute s:F('L', <f-args>)
 command! -nargs=? -complete=customlist,s:fuzzglob FC :execute s:F('C', <f-args>)
+command! -nargs=? -complete=customlist,s:buffglob FB :execute s:FB(<f-args>)

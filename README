@@ -13,4 +13,4 @@ Fuzzee.vim will tab-complete paths relative to the current working directory in 
 Supports splits, tabs, :lcd and :cd with fuzzy-arguments.
 
 Read the README for more tips on usage.
-See the Github page for more details at https://github.com/mattsacks/vim-fuzzee
+See the Github page for more details at https://github.com/mattsa/vim-fuzzee

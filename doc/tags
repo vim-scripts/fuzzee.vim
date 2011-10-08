@@ -1,5 +1,6 @@
 fuzzee	fuzzee.txt	/*fuzzee*
 fuzzee-:F	fuzzee.txt	/*fuzzee-:F*
+fuzzee-:FB	fuzzee.txt	/*fuzzee-:FB*
 fuzzee-:FC	fuzzee.txt	/*fuzzee-:FC*
 fuzzee-:FL	fuzzee.txt	/*fuzzee-:FL*
 fuzzee-:FS	fuzzee.txt	/*fuzzee-:FS*
@@ -8,6 +9,8 @@ fuzzee-:FV	fuzzee.txt	/*fuzzee-:FV*
 fuzzee-about	fuzzee.txt	/*fuzzee-about*
 fuzzee-arguments	fuzzee.txt	/*fuzzee-arguments*
 fuzzee-author	fuzzee.txt	/*fuzzee-author*
+fuzzee-commands	fuzzee.txt	/*fuzzee-commands*
+fuzzee-globbing	fuzzee.txt	/*fuzzee-globbing*
 fuzzee-tips	fuzzee.txt	/*fuzzee-tips*
 fuzzee-usage	fuzzee.txt	/*fuzzee-usage*
 fuzzee.vim	fuzzee.txt	/*fuzzee.vim*
