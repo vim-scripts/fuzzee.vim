@@ -1,6 +1,6 @@
 This is a mirror of http://www.vim.org/scripts/script.php?script_id=3716
 
-Fuzzee.vim will tab-complete paths relative to the current working directory in Vim and also the current buffer for use with :e[dit] and :E[xplore]. It also ignores files, directories, and filetypes listed in the user-defined wildignore setting.
+Fuzzee.vim will tab-complete paths relative to the current working directory in Vim and also the current buffer for use with `:e[dit]`, `:E[xplore]`, and many other splitting options. It also ignores files, directories, and filetypes listed in the user-defined `wildignore` setting. Finally, it's on-demand multi-directory globbing and has support for custom path mappings.
 
 :F itself opens up the explorer.
 
@@ -10,7 +10,11 @@ Fuzzee.vim will tab-complete paths relative to the current working directory in 
 
 :F {arg} will search the buffer and current working directory for a fuzzy match of {arg}.
 
+:FB searches for any open or hidden buffers using the 'switchbuf' setting.
+
+:FuzzeeMap {cmap} {path} creates a custom 'cmap' per-directory to use in conjunction with the :F command.
+
 Supports splits, tabs, :lcd and :cd with fuzzy-arguments.
 
-Read the README for more tips on usage.
+Read the README for examples and tips on usage.
 See the Github page for more details at https://github.com/mattsa/vim-fuzzee

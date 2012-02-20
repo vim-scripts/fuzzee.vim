@@ -1,6 +1,7 @@
 " fuzzee.vim - Fuzzy expansions for :e and :E
-" Author: Matt Sacks <matt.s.sacks@gmail.com>
-" Version: 0.5
+" Author:        Matt Sacks <matt.s.sacks@gmail.com>
+" Version:       1.0
+" Last Modified: 02/20/12
 
 if exists('g:loaded_fuzzee') || v:version < 700
   finish
@@ -12,10 +13,13 @@ function! s:gsub(str,pat,rep) abort
   return substitute(a:str,'\v\C'.a:pat,a:rep,'g')
 endfunction
 
+" sort by shortest pathname first
 function! s:sortfile(f1, f2)
   return a:f1 == a:f2 ? 0 : len(a:f1) > len(a:f2) ? 1 : -1
 endfunction
 
+" return the sorted list with either the tail of the relative path 
+" or the full pathname
 function! s:sortlist(ls, tail)
   if a:tail
     return sort(map(copy(split(a:ls, "\n")), 'fnamemodify(v:val, ":t")'), 's:sortfile')
@@ -24,6 +28,7 @@ function! s:sortlist(ls, tail)
   endif
 endfunction
 
+" remove the trailing '/' and prepended './' to the cwd path
 function! s:filterglob(ls, cwd)
     let ls = substitute(a:ls, a:cwd.'/', '', 'g')
     return substitute(ls, '\.\/', '', 'g')
@@ -33,14 +38,19 @@ endfunction
 " fuzzyglob {{{1
 function! s:fuzzglob(arg,L,P)
   let s:head = ''
-  let dir    = fnameescape(expand('%'))
-  let updir  = fnameescape(expand('%:h'))
-  let cwd    = fnameescape(getcwd())
+  if &ft == 'netrw' && expand('%') =~ '^$'
+    let dir   = fnameescape(b:netrw_curdir)
+    let updir = fnameescape(fnamemodify(b:netrw_curdir, ':h'))
+  else
+    let dir   = fnameescape(expand('%'))
+    let updir = fnameescape(expand('%:h'))
+  endif
+  let cwd = fnameescape(getcwd())
 
   " before fuzzy-expansion {{{2
   if a:arg =~ '^\s*$'
-    if &buftype == 'nofile'
-      if dir =~ '^$' " new buffer is blank
+    if &ft == 'netrw'
+      if dir =~ '^$'
         return s:sortlist(globpath('/', '*'), 1)
       else
         return s:sortlist(globpath(dir, '*'), 1)
@@ -62,19 +72,23 @@ function! s:fuzzglob(arg,L,P)
     let s:head = '.'
   endif
 
+  " expand the full path if given a relative '../' argument and prepend
+  " to the :F argument
   if a:arg =~ '^\.\.\/'
     let dots = matchlist(a:arg, '\(\.\.\/\)\+')[0]
     let path = matchlist(a:arg, '\%(\.\.\/\)\+\(.*\)$')[1]
-    if &buftype == 'nofile'
+    if &ft == 'netrw'
       let f = fnamemodify(dir.'/'.dots, ':p')
     else
       let f = fnamemodify(updir.'/'.dots, ':p')
     endif
-    let f = f.path
+    let f = f . path
   endif
   " END fuzzy-expansion }}}2
   
+  " fuzzy-glob from Tim Pope's utilities
   let f    = s:gsub(s:gsub(f,'[^/.]','[&]*'),'%(/|^)\.@!|\.','&*')
+
   if a:arg =~ '^\*\/'
     let f  = substitute(f, '^\*[\*\]\*', '**', '')
   endif
@@ -83,11 +97,11 @@ function! s:fuzzglob(arg,L,P)
   let tail = fnamemodify(f, ':t')
 
   " its globbering time {{{2
-  if f == tail && &buftype != 'nofile'
+  if f == tail && &ft != 'netrw'
     let ls = globpath(updir, f)
-  elseif &buftype == 'nofile'
-    if (s:head !~ '^$')
-      let ls = globpath(cwd, ' ')
+  elseif &ft == 'netrw'
+    if s:head !~ '^$'
+      let ls = globpath(cwd, tail)
     elseif f =~ '^\/' && f !~ '\/*$'
       let ls = globpath('/', tail)
     elseif f =~# '^$HOME'
@@ -117,7 +131,6 @@ function! s:fuzzglob(arg,L,P)
     endif
     let ls = s:filterglob(ls, cwd)
   endif
-  " END if completing a directory }}}2
 
   " return the globbed files {{{2
   if len(ls) == 0 && tail !~ '\.'
@@ -133,9 +146,9 @@ function! s:fuzzglob(arg,L,P)
   elseif len(ls) == 0
     return s:sortlist(glob(f), 0)
   else
-    if &buftype == 'nofile' && f == tail && s:head =~ '^$'
+    if &ft == 'netrw' && f == tail && s:head =~ '^$'
       let s:head = fnamemodify(split(ls, "\n")[0], ':h')
-    elseif f == tail && &buftype != 'nofile' && s:head =~ '^$'
+    elseif f == tail && &ft != 'netrw' && s:head =~ '^$'
       let s:head = updir
     endif
     if f == tail
@@ -152,38 +165,44 @@ function! s:F(cmd, ...)
   let cmds  = {'E': 'edit', 'S': 'split', 'V': 'vsplit', 'T': 'tabedit',
               \'L': 'lcd', 'C': 'cd'}
   let cmd   = cmds[a:cmd]
-  let dir   = substitute(fnameescape(expand('%')), '\(.\)/$', '\1', '')
-  let updir = substitute(fnameescape(expand('%:h')), '\(.\)/$', '\1', '')
+  if &ft == 'netrw' && expand('%') =~ '^$'
+    let dir   = substitute(fnameescape(b:netrw_curdir), '\(.\)/$', '\1', '')
+    let updir = substitute(fnameescape(fnamemodify(b:netrw_curdir, ':h')), '\(.\)/$', '\1', '')
+  else
+    let dir   = substitute(fnameescape(expand('%')), '\(.\)/$', '\1', '')
+    let updir = substitute(fnameescape(expand('%:h')), '\(.\)/$', '\1', '')
+  endif
   let cwd   = substitute(fnameescape(getcwd()), '\(.\)/$', '\1', '')
 
   if a:0 == 0
-    if expand("%") =~# '^$'
-      execute 'silent! ' cmd cwd
-    elseif &buftype == 'nofile'
+    if &ft == 'netrw'
       execute 'silent! ' cmd dir
     else
       execute 'silent! ' cmd updir
     endif
-    return
+    return ''
   endif
 
   if a:1 =~ '^\.$'
     execute 'silent! '.cmd cwd
-    return
+    return ''
   endif
 
   let f = s:fuzzglob(a:1, '', '')
+  " remove the prepended '/' if globbed from the root
   if (s:head =~ '^\.' && f[0][0] == '/') || s:head =~ '^\/$'
     let s:head = ''
   endif
   if len(f) == 0
-    return
+    return ''
   elseif s:head !~ '^$'
     execute 'silent! '.cmd fnameescape(s:head.'/'.f[0])
   else
     execute 'silent! '.cmd fnameescape(f[0])
   endif
-  execute 'silent! lcd' fnameescape(getcwd())
+  if &ft != 'netrw'
+    execute 'silent! lcd' fnameescape(getcwd())
+  endif
 endfunction
 " END the F command }}}1
 
@@ -208,23 +227,38 @@ endfunction
 function! s:FB(...)
   if a:0 == 0
     execute 'silent! b' bufname('#')
-    return
+    return ''
   endif
 
   let f = s:buffglob(a:1, '', '')
-  let b = ''
+  if len(f) == 0
+    echomsg 'no buffers found'
+    return ''
+  endif
+  let s = ''
 
   if &switchbuf !~ '^$'
     for i in range(1, tabpagenr('$'))
       if index(tabpagebuflist(i), bufnr(f[0])) != -1
-        let b = 's'
+        let s = 's'
         break
       endif
     endfor
   endif
-  execute 'silent '.b.'b' f[0]
+  execute s.'b' f[0]
 endfunction
 " END fuzzee-buffer }}}1
+
+" fuzzee-tag {{{1
+function! s:tagglob(arg,L,P)
+  let tags = []
+  if a:arg =~ '^$'
+    for t in taglist('*')
+      tags += t.name
+    endfor
+  endif
+endfunction
+" END fuzzee-tag }}}1
 
 command! -nargs=? -complete=customlist,s:fuzzglob F  :execute s:F('E', <f-args>)
 command! -nargs=? -complete=customlist,s:fuzzglob FS :execute s:F('S', <f-args>)
